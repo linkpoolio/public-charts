@@ -1,0 +1,25 @@
+# Chainlink
+
+## Introduction
+This is a helm chart for running a Chainlink node on Kubernetes. It includes a Postgres database for storing its data. The node is deployed as a statefulset, with the P2P OCR port exposed on a unique public load balancer. Meanwhile, the HTTP web UI is served via an ingress, so that it can benefit from automatic TLS and DNS management using [cert-manager](https://cert-manager.io/) and [external-dns](https://github.com/kubernetes-sigs/external-dns). Additionally, the chart defaults to securing the web UI endpoint using basic auth over HTTPS, using a dynamically generated credential generated via [kubernetes-secret-generator](https://github.com/mittwald/kubernetes-secret-generator).
+
+# Example usage
+
+```
+nodeConfig:
+  network: rinkeby
+  ethUrl: wss://rinkeby-ws.naas.linkpool.io
+  secureCookies: false
+  enableGasUpdater: true
+  apiUser: "example@linkpool.io"
+  apiPassword: "<passed securely using a CI tool>"
+  walletPassword: "<passed securely using a CI tool>""
+  featureOffChainReporting: true
+resources:
+  requests:
+    cpu: 1000m
+    memory: 2048Mi
+```
+
+
+{{ template "chart.valuesSection" . }}

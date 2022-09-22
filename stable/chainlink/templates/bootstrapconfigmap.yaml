@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name:  {{ template "chainlink.fullname" . }}-bootstrap
+data:
+  initialize.sh: |-
+    #!/bin/sh
+    # Chainlink requires that we set a P2P_ANNOUNCE_IP environment variable if the IP address differs from that found by the application via net.IP
+    # Because we're running Chainlink in a Kubernetes cluster and exposing the P2P service via a LoadBalancer, we have to fetch the LoadBalancer IP
+    # and provide it back to the container. 
+
+    export CONFIGMAP="{{ include "chainlink.fullname" . }}-config"
+    export SERVICE="{{ include "chainlink.fullname" . }}-p2p"
+    until kubectl get svc $SERVICE -o json | jq -e '.status.loadBalancer.ingress[].ip '
+    do
+        echo "waiting for loadbalancer IP to be assigned..."
+        sleep 5
+    done
+    echo "loadbalancer IP has been assigned."
+    IP=`kubectl get services $SERVICE -o go-template --template='{{ printf "{{ (index .status.loadBalancer.ingress 0).ip }}" }}'`
+
+    PATCH=`printf '{"data":{"P2P_ANNOUNCE_IP": "%s"}}' $IP`
+    echo "adding loadbalancer IP to configmap as P2P_ANNOUNCE_IP..."
+    kubectl patch configmap --type=merge -p "${PATCH}" $CONFIGMAP
+
+    exit

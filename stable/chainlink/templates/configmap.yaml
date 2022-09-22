@@ -1,0 +1,97 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chainlink.fullname" . }}-config
+data:
+
+  # Set basic chainlink node settings
+  ROOT: "/chainlink"
+  ALLOW_ORIGINS: "*"
+  LOG_LEVEL: {{ .Values.nodeConfig.logLevel | default "debug" | quote }}
+  CHAINLINK_TLS_PORT: {{ .Values.nodeConfig.tlsPort | default "0" | quote }}
+  SECURE_COOKIES: {{ .Values.nodeConfig.secureCookies | default "false" | quote }}
+  FEATURE_OFFCHAIN_REPORTING: {{ .Values.nodeConfig.featureOffChainReporting | default "true" | quote }}
+  # set the URL for the upstream blockchain node to connect with
+  ETH_URL: {{ required "A valid ethUrl value is required!" .Values.nodeConfig.ethUrl }}
+
+  # Configure the Postgres database connection
+  {{- if .Values.nodeConfig.databaseUrl }} # use a postgres database configured externally
+  DATABASE_URL: "{{ .Values.nodeConfig.databaseUrl }}"
+  {{- else }}
+  {{- if .Values.postgresql.enabled }} # use a standalone postgres helm chart
+  DATABASE_URL: "postgresql://{{ .Values.global.postgresql.postgresqlUsername }}:{{ .Values.global.postgresql.postgresqlPassword }}@{{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local:5432/{{ .Values.global.postgresql.postgresqlDatabase }}?sslmode=disable"
+  {{- end }}
+  {{- if .Values.postgresqlHA.enabled }} # use a postgres-ha helm chart
+  DATABASE_URL: "postgresql://{{ .Values.global.postgresql.username }}:{{ .Values.global.postgresql.password }}@{{ .Release.Name }}-postgresql-ha-pgpool.{{ .Release.Namespace }}.svc.cluster.local:5432/{{ .Values.global.postgresql.database }}?sslmode=disable"
+  {{- end }}
+  {{- end }}
+
+  # Set the ETH_CHAIN_ID and LINK contract address to use, based on the network we're using.
+  {{- if eq .Values.nodeConfig.network "mainnet" }} # Mainnet
+  ETH_CHAIN_ID: "1"
+  LINK_CONTRACT_ADDRESS: "0x514910771af9ca656af840dff83e8264ecf986ca"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "kovan" }} # Kovan
+  ETH_CHAIN_ID: "42"
+  LINK_CONTRACT_ADDRESS: "0xa36085F69e2889c224210F603D836748e7dC0088"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "rinkeby" }} # Rinkeby
+  ETH_CHAIN_ID: "4"
+  LINK_CONTRACT_ADDRESS: "0x01BE23585060835E02B77ef475b0Cc51aA1e0709"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "goerli" }} # Goerli
+  ETH_CHAIN_ID: "5"
+  LINK_CONTRACT_ADDRESS: "0x326c977e6efc84e512bb9c30f76e30c160ed06fb"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "arbitrum-rinkeby" }} # arbitrum-rinkeby
+  ETH_CHAIN_ID: "421611"
+  LINK_CONTRACT_ADDRESS: "0x6C0d92E515223a519c58d50583253D3A1ca9A0c1"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "bsc-testnet" }} # bsc-testnet
+  ETH_CHAIN_ID: "97"
+  LINK_CONTRACT_ADDRESS: "0x84b9b910527ad5c03a9ca831909e21e236ea7b06"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "fuji" }} # fuji
+  ETH_CHAIN_ID: "43113"
+  LINK_CONTRACT_ADDRESS: "0x0b9d5D9136855f6FEc3c0993feE6E9CE8a297846"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "matic-mumbai" }} # matic-mumbai
+  ETH_CHAIN_ID: "80001"
+  LINK_CONTRACT_ADDRESS: "0x326C977E6efc84E512bB9C30f76E30c160eD06FB"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "heco-testnet" }} # heco-testnet
+  ETH_CHAIN_ID: "256"
+  LINK_CONTRACT_ADDRESS: "0x9e004545c59D359F6B7BFB06a26390b087717b42"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "optimism-kovan" }} # optimism-kovan
+  ETH_CHAIN_ID: "69"
+  LINK_CONTRACT_ADDRESS: "0x4911b761993b9c8c0d14Ba2d86902AF6B0074F5B"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+  {{- if eq .Values.nodeConfig.network "optimism-goerli" }} # optimism-goerli
+  ETH_CHAIN_ID: "420"
+  LINK_CONTRACT_ADDRESS: "0xdc2cc710e42857672e7907cf474a69b63b93089f"
+  MIN_OUTGOING_CONFIRMATIONS: "2"
+  {{- end }}
+
+  # Chainlink P2P settings
+  {{- if .Values.p2pService.enabled }}
+  P2P_ANNOUNCE_PORT: {{ .Values.p2pService.port | default "" | quote }}
+  P2P_BOOTSTRAP_PEERS: {{ .Values.nodeConfig.p2pBootstrapPeers | default "" | quote}}
+  P2P_LISTEN_PORT: {{ .Values.p2pService.port | default "" | quote }}
+  P2P_PEER_ID: {{ .Values.nodeConfig.port | default "" | quote }}
+  {{- end }}
+
+
+  # .Values.nodeConfig.values -- Specify any other  environment variables your node needs.
+  {{- range $key, $val := .Values.nodeConfig.extraVars }}
+  {{ $key }}: {{ $val | quote }}
+  {{- end}}

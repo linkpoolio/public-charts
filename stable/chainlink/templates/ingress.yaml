@@ -1,0 +1,44 @@
+{{- if .Values.ingress.enabled -}}
+{{- $fullName := include "chainlink.fullname" . -}}
+{{- $svcPort := .Values.httpService.port -}}
+{{- $pathType := .Values.ingress.pathType -}}
+{{- $path := .Values.ingress.path}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullName }}
+  labels:
+    {{- include "chainlink.labels" . | nindent 4 }}
+  annotations:
+  {{- if .Values.ingress.auth.enabled }}
+    nginx.ingress.kubernetes.io/auth-type: basic
+    nginx.ingress.kubernetes.io/auth-secret: {{ include "chainlink.fullname" . }}-ingress-auth
+    nginx.ingress.kubernetes.io/auth-realm: 'Authentication Required - Chainlink Node UI'
+  {{- end }}
+  {{- with .Values.ingress.annotations }}
+  {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.class }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - secretName: {{ .Values.ingress.tls.secretName }}
+      hosts:
+        {{- range .Values.ingress.staticDomains }}
+        - {{ . }}
+        {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.staticDomains }}
+    - host: {{ . }}
+      http:
+        paths:
+          - pathType: {{ $pathType }}
+            path: {{ $path }}
+            backend:
+              service:
+                name: {{ $fullName }}-http
+                port:
+                  name: http
+    {{- end }}
+{{- end }}

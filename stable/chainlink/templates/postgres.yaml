@@ -1,0 +1,175 @@
+{{- if .Values.postgresOperator.enabled }}
+apiVersion: postgres-operator.crunchydata.com/v1beta1
+kind: PostgresCluster
+metadata:
+  name: {{ include "chainlink.fullname" . }}-pg
+spec:
+  postgresVersion: {{ default 13 .Values.postgresOperator.postgresVersion }}
+  {{- if .Values.postgresOperator.imagePostgres }}
+  image: {{ .Values.postgresOperator.imagePostgres | quote }}
+  {{- end }}
+  {{- if .Values.postgresOperator.port }}
+  port: {{ .Values.postgresOperator.port }}
+  {{- end }}
+  {{- if .Values.postgresOperator.instances }}
+  instances:
+{{ toYaml .Values.postgresOperator.instances | indent 4 }}
+  {{- else }}
+  instances:
+    - name: {{ default "instance1" .Values.postgresOperator.instanceName | quote }}
+      replicas: {{ default 1 .Values.postgresOperator.instanceReplicas }}
+      dataVolumeClaimSpec:
+        accessModes:
+        - "ReadWriteOnce"
+        resources:
+          requests:
+            storage: {{ default "1Gi" .Values.postgresOperator.instanceSize | quote }}
+      {{- if or .Values.postgresOperator.instanceMemory .Values.postgresOperator.instanceCPU }}
+      resources:
+        requests:
+          cpu: {{ default "" .Values.postgresOperator.instanceCPU | quote }}
+          memory: {{ default "" .Values.postgresOperator.instanceMemory | quote }}
+        limits:
+          cpu: {{ default "" .Values.postgresOperator.instanceCPU | quote }}
+          memory: {{ default "" .Values.postgresOperator.instanceMemory | quote }}
+      {{- end }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 1
+            podAffinityTerm:
+              topologyKey: kubernetes.io/hostname
+              labelSelector:
+                matchLabels:
+                  postgres-operator.crunchydata.com/cluster: {{ include "chainlink.fullname" . }}
+                  postgres-operator.crunchydata.com/instance-set: {{ default "instance1" .Values.postgresOperator.instanceName | quote }}
+  {{- end }}
+  backups:
+    pgbackrest:
+      {{- if .Values.postgresOperator.imagePgBackRest }}
+      image: {{ .Values.postgresOperator.imagePgBackRest | quote }}
+      {{- end }}
+      {{- if .Values.postgresOperator.pgBackRestConfig }}
+{{ toYaml .Values.postgresOperator.pgBackRestConfig | indent 6 }}
+      {{- else if .Values.postgresOperator.backups.gcs.enabled }}
+      manual:
+        repoName: repo1
+        options:
+         - --type=full
+      global:
+        repo1-retention-full: {{ .Values.postgresOperator.backups.gcs.retention.count | quote }}
+        repo1-retention-full-type: {{ .Values.postgresOperator.backups.gcs.retention.type }}
+        repo1-path: /pgbackrest/{{ .Release.Namespace }}/{{ default .Release.Name .Values.postgresOperator.name }}/repo1
+      configuration:
+      - secret:
+          name: {{ default "pgbackrest-secret" .Values.postgresOperator.backups.gcs.secretName }}
+      repos:
+      - name: repo1
+        gcs:
+          bucket: {{ .Values.postgresOperator.backups.gcs.bucket | quote }}
+        {{- if .Values.postgresOperator.backups.gcs.scheduleEnabled }}
+        schedules:
+          full: {{ .Values.postgresOperator.backups.gcs.schedules.full }}
+          incremental: {{ .Values.postgresOperator.backups.gcs.schedules.incremental }}
+        {{- end }}
+      {{- else if .Values.postgresOperator.backups.volume.enabled }}
+      manual:
+        repoName: repo1
+        options:
+         - --type=full
+      global:
+        repo1-retention-full: {{ .Values.postgresOperator.backups.volume.retention.count | quote }}
+        repo1-retention-full-type: {{ .Values.postgresOperator.backups.volume.retention.type }}
+      repos:
+      - name: repo1
+        {{- if .Values.postgresOperator.backups.volume.scheduleEnabled }}
+        schedules:
+          full: {{ .Values.postgresOperator.backups.volume.schedules.full }}
+          incremental: {{ .Values.postgresOperator.backups.volume.schedules.incremental }}
+        {{- end }}
+        volume:
+          volumeClaimSpec:
+            storageClassName: {{ default "standard" .Values.postgresOperator.backups.volume.storageClassName }}
+            accessModes:
+            - "ReadWriteOnce"
+            resources:
+              requests:
+                storage: {{ default "1Gi" .Values.postgresOperator.backups.volume.size | quote }}
+      {{- end }}
+  {{- if or .Values.postgresOperator.pgBouncerReplicas .Values.postgresOperator.pgBouncerConfig }}
+  proxy:
+    pgBouncer:
+      {{- if .Values.postgresOperator.imagePgBouncer }}
+      image: {{ .Values.postgresOperator.imagePgBouncer | quote }}
+      {{- end }}
+      {{- if .Values.postgresOperator.pgBouncerConfig }}
+{{ toYaml .Values.postgresOperator.pgBouncerConfig | indent 6 }}
+      {{- else }}
+      replicas: {{ .Values.postgresOperator.pgBouncerReplicas }}
+      {{- end }}
+  {{- end }}
+  {{- if .Values.postgresOperator.patroni }}
+  patroni:
+{{ toYaml .Values.postgresOperator.patroni | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.users }}
+  users:
+{{ toYaml .Values.postgresOperator.users | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.service }}
+  service:
+{{ toYaml .Values.postgresOperator.service | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.dataSource }}
+  service:
+{{ toYaml .Values.postgresOperator.dataSource | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.databaseInitSQL }}
+  databaseInitSQL:
+    name: {{ required "A ConfigMap name is required for running bootstrap SQL." .Values.postgresOperator.databaseInitSQL.name | quote }}
+    key: {{ required "A key in a ConfigMap containing any bootstrap SQL is required." .Values.postgresOperator.databaseInitSQL.key | quote }}
+  {{- end }}
+  {{- if .Values.postgresOperator.imagePullPolicy }}
+  imagePullPolicy: {{ .Values.postgresOperator.imagePullPolicy | quote }}
+  {{- end }}
+  {{- if .Values.postgresOperator.imagePullSecrets }}
+  imagePullSecrets:
+{{ toYaml .Values.postgresOperator.imagePullSecrets | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.disableDefaultPodScheduling }}
+  disableDefaultPodScheduling: true
+  {{- end }}
+  {{- if .Values.postgresOperator.metadata }}
+  metadata:
+{{ toYaml .Values.postgresOperator.metadata | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.monitoring }}
+  monitoring:
+    pgmonitor:
+      exporter:
+        image: {{ default "" .Values.postgresOperator.imageExporter | quote }}
+        {{- if .Values.postgresOperator.monitoringConfig }}
+{{ toYaml .Values.postgresOperator.monitoringConfig | indent 8 }}
+        {{- end }}
+  {{- end }}
+  {{- if .Values.postgresOperator.shutdown }}
+  shutdown: true
+  {{- end }}
+  {{- if .Values.postgresOperator.standby }}
+  standby:
+    enabled: {{ .Values.postgresOperator.standby.enabled }}
+    repoName: {{ required "repoName must be set when enabling standby mode." .Values.postgresOperator.standby.repoName }}
+  {{- end }}
+  {{- if .Values.postgresOperator.supplementalGroups }}
+  supplementalGroups:
+{{ toYaml .Values.postgresOperator.supplementalGroups | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.customTLSSecret }}
+  customTLSSecret:
+{{ toYaml .Values.postgresOperator.customTLSSecret | indent 4 }}
+  {{- end }}
+  {{- if .Values.postgresOperator.customReplicationTLSSecret }}
+  customReplicationTLSSecret:
+{{ toYaml .Values.postgresOperator.customReplicationTLSSecret | indent 4 }}
+  {{- end }}
+{{- end }}

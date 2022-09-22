@@ -1,0 +1,25 @@
+apiVersion: v2
+name: chainlink
+description: A Helm chart for deploying a Chainlink node to Kubernetes.
+
+type: application
+
+version: 0.7.6
+
+appVersion: v1.1.0
+
+dependencies:
+- name: postgresql
+  version: 10.16.2
+  repository: "https://charts.bitnami.com/bitnami"
+  condition: postgresql.enabled
+- name: postgresql-ha
+  version: 8.2.7
+  repository: "https://charts.bitnami.com/bitnami"
+  condition: postgresqlHA.enabled
+
+maintainers:
+  - name: bowlesns
+    email: nick@linkpool.io
+  - name: dosullivan
+    email: daniel@linkpool.io

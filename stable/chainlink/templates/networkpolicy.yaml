@@ -1,0 +1,91 @@
+{{ if .Values.networkPolicy.namespacePolicy.enabled }}
+## Isolate traffic within the specific chainlink node's namespace by default
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chainlink.fullname" . }}-namespace-policy
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels: {}
+  ingress:
+  - from:
+    - podSelector: {}
+{{- end }}
+{{ if .Values.networkPolicy.httpIngressPolicy.enabled }}
+---
+## Allow traffic from the ingress controller namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chainlink.fullname" . }}-allow-http-from-ingress
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels:
+      {{- include "chainlink.selectorLabels" . | nindent 6 }}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Values.networkPolicy.httpIngressPolicy.ingressControllerNamespace }}
+{{- end }}
+{{ if .Values.networkPolicy.p2pServicePolicy.enabled }}
+---
+## If OCR is enabled, allow traffic from the Internet via the p2p OCR loadbalancer to interact with the node
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chainlink.fullname" . }}-allow-p2p-traffic
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels:
+      {{- include "chainlink.selectorLabels" . | nindent 6 }}
+  ingress:
+  - from:
+    - podSelector: {}
+  - from:
+    - ipBlock:
+        cidr: '0.0.0.0/0'
+        except: ['10.0.0.0/8']
+{{- end }}
+{{ if .Values.networkPolicy.prometheusPolicy.enabled }}
+---
+## Allow traffic from the prometheus monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chainlink.fullname" . }}-allow-http-from-prometheus
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels:
+      {{- include "chainlink.selectorLabels" . | nindent 6 }}
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Values.networkPolicy.prometheusPolicy.prometheusNamespace }}
+---
+## Allow traffic from the prometheus monitoring namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "chainlink.fullname" . }}-allow-traffic-from-prometheus-to-postgrescluster
+spec:
+  policyTypes:
+  - Ingress
+  podSelector:
+    matchLabels:
+      postgres-operator.crunchydata.com/data: postgres
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: {{ .Values.networkPolicy.prometheusPolicy.prometheusNamespace }}
+{{- end }}

@@ -1,0 +1,225 @@
+# Default values for chainlink.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 1
+
+image:
+  repository: smartcontract/chainlink
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
+  tag: "1.1.0"
+
+nameOverride: ""
+fullnameOverride: ""
+
+podAnnotations: {}
+
+httpService:
+  # httpService.type -- the type of service for the http web ui. Defaults to ClusterIP for use with an ingress.
+  type: ClusterIP
+  # httpService.port -- the port to expose the ClusterIP on.
+  port: 80
+
+p2pService:
+  # p2pService.enabled -- Whether or not to enable the P2P OCR service.
+  enabled: false
+  # p2pService.type -- The type of service for the P2P endpoint. Defaults to loadBalancer to publicly expose for OCR connectivity. 
+  type: LoadBalancer
+  # p2pService.port -- the port for the P2P OCR service.
+  port: 7138
+
+networkPolicy:
+  namespacePolicy:
+  # networkPolicy.namespacePolicy.enabled -- whether or not to include a network policy for restricting/isolating inbound traffic to the chainlink namespace. Defaults to false.
+    enabled: false
+  httpIngressPolicy:
+  # networkPolicy.httpIngressPolicy.enabled -- whether or not to include a network policy for allowing inbound traffic to the chainlink node from an ingress controller. Defaults to false.
+    enabled: false
+  # networkPolicy.httpIngressPolicy.ingressControllerNamespace -- The namespace of the ingress controller to allow access from. Defaults to `ingress-nginx`.
+    ingressControllerNamespace: ingress-nginx
+  p2pServicePolicy:
+  # networkPolicy.p2pServicePolicy.enabled -- whether or not to include a network policy for allowing inbound traffic from the internet for P2P OCR via a LoadBalancer service. Defaults to false.
+    enabled: false
+  prometheusPolicy:
+  # networkPolicy.prometheusPolicy.enabled -- whether or not to include a network policy for allowing inbound traffic to the chainlink node from a namespace running prometheus. Defaults to false.
+    enabled: false
+  # networkPolicy.prometheusPolicy.prometheusNamespace -- The namespace of the prometheus service to allow access from. Defaults to `kube-prometheus-stack`.
+    prometheusNamespace: kube-prometheus-stack
+
+ingress:
+  # ingress.enabled -- Whether or not to enable the http web UI ingress.
+  enabled: true
+  # ingress.class -- The class to use for the ingress.
+  class: "ingress-nginx-external"
+  auth:
+  # ingress.auth.enabled -- Whether or not to protect the web UI ingress with basic auth.
+    enabled: false
+  # ingress.auth.authfile -- The contents of an htpasswd formatted file containing the basic auth credentials
+    authFileContents: "example@linkpool.io:$apr1$KeZZLiRh$H/3lxu/wcfAY9t4Qg5bcq0"
+  # ingress.auth.username -- the username for the ingress basic auth. 
+    username: "example@linkpool.io"
+  # ingress.auth.password -- the password for the ingress basic auth.
+    password: "exampletobereplaced"
+    secret:
+  # ingress.secret.annotations  - Annotations for the ingress basic auth secret. Can be used with various operators to dynamically generate basic auth credentials.
+      annotations: {}
+  # ingress.path -- The path to set on the http web UI ingress. Should be left at "/"
+  path: "/"
+  # ingress.pathType -- The pathType to set on the http web UI ingress. Should be left at Prefix for most controllers.
+  pathType: "Prefix"
+  # ingress.annotations -- Annotations for the http web ui ingress. Assumes use of ingress-nginx.
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/limit-connections: "5"
+    nginx.ingress.kubernetes.io/limit-rps: "10"
+    nginx.ingress.kubernetes.io/limit-rpm: "500"
+  # ingress.staticDomains -- The DNS names to expose the http web UI at.
+  staticDomains:
+    - node-example.company.tld
+  tls:
+  # tls.enabled -- Turn on or off the TLS rules for the http web UI. Should be left to true.
+    enabled: true
+  # tls.secretName -- provide a specific TLS Secret name, if desired.
+    secretName: chainlink-ingress-tls
+
+resources: {}
+  # Configure this to fit the needs for your environment.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+
+nodeConfig:
+  # nodeConfig.network -- The Ethereum network to use.
+  network: "mainnet"  # one of mainnet, goerli, kovan, rinkeby, etc
+  # TODO allow a secret ref for user/pass part of this
+  # Full database url IE "postgresql://$USERNAME:$PASSWORD@$SERVER:$PORT/$DATABASE"
+  # databaseUrl: ""
+  # nodeConfig.ethUrl -- The Ethereum node to connect to.
+  ethUrl: "wss://"
+  # nodeConfig.logLevel -- The log level for the chainlink node
+  logLevel: "debug"
+  # nodeConfig.tlsPort -- the port used for HTTPS connections. 0 disables tls so that we can handle it in the kubernetes ingress.
+  tlsPort: 0
+  # nodeConfig.secureCookies -- Requires the use of secure cookies for authentication.
+  secureCookies: false
+  # nodeConfig.apiUser -- the username for the node's admin credentials.
+  apiUser: "admin@linkpool.io"
+  # nodeConfig.apiPassword -- the password for the node's admin credentials. Recommended to be passed through securely via your CI tool.
+  apiPassword: "linkt0gETHER"
+  # nodeConfig.walletPassword -- the password for the node's wallet. Recommended to be passed through securely via your CI tool.
+  walletPassword: "sd093KB+330b7S="
+  # nodeConfig.featureOffChainReporting -- Enables OCR. Enabled by default.
+  featureOffChainReporting: false
+  # nodeConfig.p2pPeerID -- Pass through a specific peer ID for OCR if desired.
+  p2pPeerID:
+  # nodeConfig.p2pBootstrapPeers -- Pass through specific bootstrap peers for OCR if desired.
+  p2pBootstrapPeers:
+  extraVars: {}
+
+serviceAccount:
+   #serviceAccount.create -- If true, a service account will be created for the node. If set to false, you must set `serviceAccount.name`
+  create: true
+  # serviceAccount.name -- The name of an existing service account to use for the node. Combined with `serviceAccount.create`
+  name:
+  # Annotations to add to the service account, if created.
+  annotations: {}
+
+rbac:
+  # rbac.create -- If set to true, rbac resources will be created for the service account. Required if using the chart's service account.
+  create: true
+
+postgresql:
+  # postgresql.enabled -- whether or not to deploy a standalone postgres database helm chart.
+  enabled: true
+
+postgresqlHA:
+  # postgresqlHA.enabled -- whether or not to deploy a high availability postgres database helm chart.
+  enabled: false
+
+global:
+  # these values are used by the standalone postgres helm charts
+  postgresql:
+  # global.postgresql.postgresqlUsername -- the username for standalone postgres
+    postgresqlUsername: "postgres"
+  # global.postgresql.postgresqlPassword -- the password for standalone postgres
+    postgresqlPassword: "chainlink_everything777"
+  # global.postgresql.postgresqlDatabase -- the database for standalone postgres
+    postgresqlDatabase: "chainlink"
+  # global.postgresql.username -- the username for postgres-ha
+    username: "postgres"
+  # global.postgresql.password -- the password for postgres-ha
+    password: "chainlink_everything777"
+  # global.postgresql.database -- the database for postgres-ha
+    database: "chainlink"
+
+postgresOperator:
+  # postgresOperator.enabled -- whether or not to use a database provisioned via postgres-operator.
+  enabled: false
+  # postgresOperator.postgresVersion -- sets the desired postgres version
+  postgresVersion: 13
+  # postgresOperator.monitoring -- enables the ability to monitor the Postgres cluster through a metrics exporter than can be scraped by Prometheus. This defaults to the value below.
+  monitoring: false
+  # postgresOperator.instanceSize -- sets the size of the volume that contains the data. This defaults to the value below. Settings "instances" overrides this value.
+  instanceSize: 1Gi
+  # postgresOperator.instanceMemory -- sets the memory limit for the Postgres instances. This defaults to no limit being set, but an example value is set below. Settings "instances" overrides this value.
+  instanceMemory: 256Mi
+  # postgresOperator.instanceCPU -- sets the CPU limit for the Postgres instances. This defaults to no limit being set, but an example value is set below. Setting "instances" overrides this value.
+  instanceCPU: 250m
+  # postgresOperator.users -- a list of users to be configured on the postgres-operator managed db. Should usually be left as-is.
+  users:
+    - name: "postgres"
+      databases:
+        - chainlink
+      options: "SUPERUSER"
+  backups:
+    # postgresoperator.backups.pgBackRestConfig -- pass through an entirely custom backup config block.
+    #pgBackRestConfig:
+    volume:
+  # postgresOperator.backups.volume.enabled -- whether or not to enable a backup volume. Defaults to true.
+      enabled: false
+  # postgresOperator.backups.volume.storageClassName -- the storageclass to use for the backup volume.
+      storageClassName: standard
+  # postgresOperator.backups.volume.size -- the size of the backup volume.
+      size: 1Gi
+  # postgresOperator.backups.volume.scheduleEnabled -- whether or not to enable the backup schedule for the backup volume
+      scheduleEnabled: false
+      schedules:
+  # postgresOperator.backups.volume.schedules.full -- the cron schedule for full database backups to the backup volume
+        full: "0 1 * * *"
+  # postgresOperator.backups.volume.schedules.incremental -- the cron schedule for incremental database backups to the backup volume
+        incremental: "0 */4 * * *"
+      retention:
+   # postgresOperator.backups.volume.retention.count -- the number of backups to retain on the backup volume
+        count: 14
+   # postgresOperator.backups.volume.retention.type -- the type of backup units to retain. can be count or time.
+        type: time
+    gcs:
+  # postgresOperator.backups.gcs.enabled -- whether or not to enable a gcs backup repo. Defaults to false.
+      enabled: true
+  # postgresOperator.backups.gcs.bucket -- The GCS bucket to use.
+      bucket:
+  # postgresOperator.backups.gcs.secretName -- the secret containing the GCS config file and service account key.
+      secretName:
+  # postgresOperator.backups.gcs.scheduleEnabled -- whether or not to enable the backup schedule for the gcs backup
+      scheduleEnabled: false
+      schedules:
+  # postgresOperator.backups.gcs.schedules.full -- the cron schedule for full database backups to gcs
+        full: "0 1 * * *"
+  # postgresOperator.backups.gcs.schedules.incremental -- the cron schedule for incremental database backups to gcs
+        incremental: "0 */4 * * *"
+      retention:
+   # postgresOperator.backups.gcs.retention.count -- the number of backups to retain on gcs
+        count: 14
+   # postgresOperator.backups.gcs.retention.type -- the type of backup units to retain. can be count or time.
+        type: time

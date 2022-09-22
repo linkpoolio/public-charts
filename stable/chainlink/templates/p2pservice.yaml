@@ -1,0 +1,17 @@
+{{- if .Values.p2pService.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chainlink.fullname" . }}-p2p
+  labels:
+    {{- include "chainlink.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.p2pService.type }}
+  ports:
+    - port: {{ .Values.p2pService.port }}
+      targetPort: p2p
+      protocol: TCP
+      name: p2p
+  selector:
+    {{- include "chainlink.selectorLabels" . | nindent 4 }}
+  {{- end }}

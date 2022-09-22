@@ -1,0 +1,113 @@
+{{- $fullName := include "chainlink.fullname" . -}}
+
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "chainlink.fullname" . }}
+  labels:
+    {{- include "chainlink.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "chainlink.selectorLabels" . | nindent 6 }}
+  serviceName: {{ include "chainlink.fullname" . }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "chainlink.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- if .Values.serviceAccount.create }}
+      serviceAccountName: {{ include "chainlink.fullname" . }}
+      {{- else }}
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+      {{- end }}
+      initContainers:
+        - name: bootstrap
+          image: bitnami/kubectl:1.19.14
+          command: ["/bin/sh", "-c"]
+          args:
+            - /scripts/initialize.sh
+          volumeMounts:
+            - name: bootstrap
+              mountPath: "/scripts/"
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ["chainlink", "local", "node"]
+          args: ["-a", "/chainlink/secrets/.api", "-p", "/chainlink/secrets/.password"]
+          ports:
+            - name: http
+              containerPort: 6688
+              protocol: TCP
+            - name: p2p
+              containerPort: 7138
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 15
+            timeoutSeconds: 1
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 15
+            timeoutSeconds: 1
+            periodSeconds: 10
+          startupProbe:
+            httpGet:
+              path: /
+              port: http
+            failureThreshold: 30
+            periodSeconds: 10
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "chainlink.fullname" . }}-config
+          {{- if .Values.postgresOperator.enabled }}
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                {{- with index .Values.postgresOperator.users 0 }}
+                  name: {{ $fullName }}-pg-pguser-{{ .name }}
+                  key: uri
+                {{- end }}
+          {{- end }}
+          volumeMounts:
+            - name: admin
+              mountPath: "/chainlink/secrets/"
+      volumes:
+        - name: admin
+          secret:
+            secretName: {{ include "chainlink.fullname" . }}-node-admin
+            items:
+            - key: apiLogin
+              path: .api
+            - key: walletPassword
+              path: .password
+        - name: bootstrap
+          configMap:
+            name: {{ template "chainlink.fullname" . }}-bootstrap
+            defaultMode: 0755
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
