@@ -37,10 +37,10 @@ resources:
 | httpService.type | string | `"ClusterIP"` | the type of service for the http web ui. Defaults to ClusterIP for use with an ingress. |
 | image.pullPolicy | string | `"Always"` |  |
 | image.repository | string | `"smartcontract/chainlink"` |  |
-| image.tag | string | `"1.1.0"` |  |
-| ingress.annotations | object | `{"nginx.ingress.kubernetes.io/limit-connections":"5","nginx.ingress.kubernetes.io/limit-rpm":"500","nginx.ingress.kubernetes.io/limit-rps":"10","nginx.ingress.kubernetes.io/ssl-redirect":"true"}` | Annotations for the http web ui ingress. |
+| image.tag | string | `"1.8.0-root"` |  |
+| ingress.annotations | object | `{"nginx.ingress.kubernetes.io/limit-connections":"5","nginx.ingress.kubernetes.io/limit-rpm":"500","nginx.ingress.kubernetes.io/limit-rps":"10","nginx.ingress.kubernetes.io/ssl-redirect":"true"}` | Annotations for the http web ui ingress. Assumes use of ingress-nginx. |
 | ingress.auth.authFileContents | string | `"example@linkpool.io:$apr1$KeZZLiRh$H/3lxu/wcfAY9t4Qg5bcq0"` |  |
-| ingress.auth.enabled | bool | `true` | Whether or not to protect the web UI ingress with basic auth. |
+| ingress.auth.enabled | bool | `false` | Whether or not to protect the web UI ingress with basic auth. |
 | ingress.auth.password | string | `"exampletobereplaced"` | the password for the ingress basic auth. |
 | ingress.auth.secret.annotations | object | `{}` |  |
 | ingress.auth.username | string | `"example@linkpool.io"` | the username for the ingress basic auth.  |
@@ -60,7 +60,8 @@ resources:
 | networkPolicy.prometheusPolicy.prometheusNamespace | string | `"kube-prometheus-stack"` | The namespace of the prometheus service to allow access from. Defaults to `kube-prometheus-stack`. |
 | nodeConfig.apiPassword | string | `"linkt0gETHER"` | the password for the node's admin credentials. Recommended to be passed through securely via your CI tool. |
 | nodeConfig.apiUser | string | `"admin@linkpool.io"` | the username for the node's admin credentials. |
-| nodeConfig.ethUrl | string | `"wss://"` | The Ethereum node to connect to. |
+| nodeConfig.ethUrl | string | `"wss://enter-your-eth-node-url"` | The Ethereum node to connect to. |
+| nodeConfig.extraVars | object | `{}` |  |
 | nodeConfig.featureOffChainReporting | bool | `false` | Enables OCR. Enabled by default. |
 | nodeConfig.logLevel | string | `"debug"` | The log level for the chainlink node |
 | nodeConfig.network | string | `"mainnet"` | The Ethereum network to use. |

@@ -91,7 +91,7 @@ data:
   {{- end }}
 
 
-  # .Values.nodeConfig.values -- Specify any other  environment variables your node needs.
+  # Specify any other environment variables your node needs.
   {{- range $key, $val := .Values.nodeConfig.extraVars }}
   {{ $key }}: {{ $val | quote }}
   {{- end}}
